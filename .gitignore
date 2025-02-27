@@ -1,0 +1,39 @@
+# Python bytecode files
+__pycache__/
+*.pyc
+*.pyo
+
+# Dossiers d'installations d'environnements virtuels
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Dossiers de caches générés par Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.whl
+
+# Fichiers de configuration d'IDE (ex: VSCode, PyCharm)
+.vscode/
+.idea/
+
+# Fichiers de log
+*.log
+
+# Fichiers de sauvegarde et de configuration d'éditeur
+*~
+*.bak
+*.swp
+
+# Fichiers générés par Jupyter notebooks
+.ipynb_checkpoints/
+
+# Fichiers d'images traitées (généralement trop volumineux à versionner)
+data/processed/
+
+# Fichiers de tests, rapport et autres résultats temporaires
+tests/results/
