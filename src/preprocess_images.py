@@ -16,20 +16,6 @@ def sobel_edge_detection(image):
     magnitude = cv2.magnitude(grad_x, grad_y)  # Calcul de la magnitude des gradients
     return magnitude
 
-# Fonction pour appliquer un seuillage Otsu
-def canny_with_preprocessing(image, low_threshold=50, high_threshold=150):
-    # Convertir en niveaux de gris
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # Appliquer un flou pour réduire le bruit
-    blurred_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
-
-    # Appliquer l'algorithme de Canny avec des seuils ajustés
-    edges = cv2.Canny(blurred_image, low_threshold, high_threshold)
-
-    return edges
-
-
 # Fonction pour isoler les marches en fonction de la couleur (exemple pour les couleurs claires)
 def isolate_stairs(image):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -70,13 +56,27 @@ def preprocess_image(image, threshold=50):
     
     # Retourner l'image prétraitée (ici, nous retournons les contours filtrés pour la détection des marches)
     return edges_filtered
+
 def canny_with_otsu(image):
-    thresholded_image = otsu_thresholding(image)  # Appliquer Otsu pour le seuillage
-    edges = cv2.Canny(thresholded_image, 50, 150)  # Appliquer Canny sur l'image seuillée
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # Convertir en niveaux de gris
+    blurred_image = cv2.GaussianBlur(gray_image, (5, 5), 0)  # Appliquer un flou
+    edges = cv2.Canny(blurred_image, 30, 100)  # Ajuster les seuils
     return edges
+
+
 def sobel_edge_detection(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     grad_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
     grad_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
     magnitude = cv2.magnitude(grad_x, grad_y)
     return magnitude
+
+
+def morphological_filter(image):
+    # Créer un noyau de taille 5x5
+    kernel = np.ones((5, 5), np.uint8)
+    # Appliquer une érosion pour réduire les petits contours
+    image_eroded = cv2.erode(image, kernel, iterations=1)
+    # Appliquer une dilatation pour renforcer les contours importants
+    image_dilated = cv2.dilate(image_eroded, kernel, iterations=1)
+    return image_dilated
