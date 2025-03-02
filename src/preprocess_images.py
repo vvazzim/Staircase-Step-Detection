@@ -1,55 +1,82 @@
+# src/preprocess_images.py
+
 import cv2
 import numpy as np
-import os
-import pandas as pd
 
-# Chargement des annotations
-annotations_path = 'data/annotations/annotations.csv'
-annotations_df = pd.read_csv(annotations_path)
+def otsu_thresholding(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # Convertir l'image en niveaux de gris
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)  # Appliquer un flou pour réduire le bruit
+    _, thresholded_image = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)  # Seuillage Otsu
+    return thresholded_image
 
-# Dossier contenant les images
-images_dir = 'data/raw'
+def sobel_edge_detection(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # Convertir en niveaux de gris
+    grad_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)  # Détection des bords dans la direction X
+    grad_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)  # Détection des bords dans la direction Y
+    magnitude = cv2.magnitude(grad_x, grad_y)  # Calcul de la magnitude des gradients
+    return magnitude
 
-# Fonction pour charger les images et obtenir les annotations
-def load_image_and_annotation(image_name):
-    # Charger l'image
-    image_path = os.path.join(images_dir, image_name)
-    image = cv2.imread(image_path)
-
-    # Récupérer l'annotation correspondante
-    annotation = annotations_df[annotations_df['image_name'] == image_name]['num_steps'].values[0]
-    
-    return image, annotation
-
-# Fonction de prétraitement
-def preprocess_image(image):
-    # Redimensionner l'image
-    resized_image = cv2.resize(image, (800, 600))  # Dimension choisie, ajuste si nécessaire
-    
+# Fonction pour appliquer un seuillage Otsu
+def canny_with_preprocessing(image, low_threshold=50, high_threshold=150):
     # Convertir en niveaux de gris
-    gray_image = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
-    
-    # Égaliser l'histogramme pour améliorer le contraste
-    equalized_image = cv2.equalizeHist(gray_image)
-    
-    # Appliquer un flou gaussien pour réduire le bruit
-    blurred_image = cv2.GaussianBlur(equalized_image, (5, 5), 0)
-    
-    return blurred_image
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-# Traiter toutes les images
-for _, row in annotations_df.iterrows():
-    image_name = row['image_name']
-    image, annotation = load_image_and_annotation(image_name)
+    # Appliquer un flou pour réduire le bruit
+    blurred_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
 
-    # Appliquer le prétraitement
-    preprocessed_image = preprocess_image(image)
+    # Appliquer l'algorithme de Canny avec des seuils ajustés
+    edges = cv2.Canny(blurred_image, low_threshold, high_threshold)
 
-    # Affichage de l'image traitée
-    cv2.imshow(f"Preprocessed Image - {image_name}", preprocessed_image)
-    print(f"Le nombre de marches pour {image_name} est : {annotation}")
+    return edges
+
+
+# Fonction pour isoler les marches en fonction de la couleur (exemple pour les couleurs claires)
+def isolate_stairs(image):
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    lower_color = np.array([0, 0, 200])  # Plage pour les couleurs claires
+    upper_color = np.array([180, 255, 255])  # Plage de couleur maximale
+    mask = cv2.inRange(hsv, lower_color, upper_color)
+    result = cv2.bitwise_and(image, image, mask=mask)
+    return result
+
+# Fonction pour appliquer le Canny avec un seuil
+def canny_with_preprocessing(image, low_threshold=50, high_threshold=150):
+    # Convertir en niveaux de gris
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Appliquer un flou pour réduire le bruit
+    blurred_image = cv2.GaussianBlur(gray_image, (5, 5), 0)
+
+    # Appliquer l'algorithme de Canny avec des seuils ajustés
+    edges = cv2.Canny(blurred_image, low_threshold, high_threshold)
+
+    return edges
+
+
+# Fonction de filtrage morphologique (érosion + dilatation)
+def morphological_filter(image):
+    kernel = np.ones((5,5), np.uint8)
+    image_eroded = cv2.erode(image, kernel, iterations=1)
+    image_dilated = cv2.dilate(image_eroded, kernel, iterations=1)
+    return image_dilated
+
+# Fonction de prétraitement pour l'image (c'est-à-dire, appliquer tout le prétraitement dans un ordre donné)
+def preprocess_image(image, threshold=50):
+    # Appliquer les différentes étapes de prétraitement
+    image_otsu = otsu_thresholding(image)  # Appliquer Otsu
+    image_isolated = isolate_stairs(image)  # Isoler les marches
+    edges = canny_with_preprocessing(image)  # Appliquer Canny
+    edges_filtered = morphological_filter(edges)  # Appliquer le filtre morphologique
     
-    # Attendre la touche pour passer à l'image suivante
-    cv2.waitKey(0)
-
-cv2.destroyAllWindows()
+    # Retourner l'image prétraitée (ici, nous retournons les contours filtrés pour la détection des marches)
+    return edges_filtered
+def canny_with_otsu(image):
+    thresholded_image = otsu_thresholding(image)  # Appliquer Otsu pour le seuillage
+    edges = cv2.Canny(thresholded_image, 50, 150)  # Appliquer Canny sur l'image seuillée
+    return edges
+def sobel_edge_detection(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    grad_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+    grad_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+    magnitude = cv2.magnitude(grad_x, grad_y)
+    return magnitude
