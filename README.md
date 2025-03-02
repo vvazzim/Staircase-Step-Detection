@@ -1,6 +1,3 @@
-# Re-génération du fichier README.md
-
-readme_content = """
 # Staircase Step Detection
 
 ## Description
